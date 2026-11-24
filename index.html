@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>CLT層構成別 熱貫流率（U値）理論値シミュレーター</title>
+  <meta name="description" content="CLTの奇数層（強軸）・偶数層（弱軸）の開口率から熱伝導率λおよび熱貫流率U値の理論値をリアルタイム計算するシミュレーター">
+
+  <!-- Theme & PWA Manifest (Chrome / Android / Edge) -->
+  <meta name="theme-color" content="#18314F">
+  <link rel="manifest" href="./manifest.json">
+
+  <!-- Favicon -->
+  <link rel="icon" href="./favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32.png">
+
+  <!-- iOS Safari Home Screen App Settings -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="CLT U値計算">
+  <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
+
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="container header-inner">
+      <div class="brand">
+        <img src="./icons/icon-192.png" alt="CLT U値シミュレーター アイコン" class="brand-icon">
+        <div class="brand-text">
+          <h1>CLT層構成別 U値理論値シミュレーター</h1>
+          <p class="subtitle">強軸（奇数層）・弱軸（偶数層）の開口率から熱伝導率 λ と熱貫流率 U値 を自動算出</p>
+        </div>
+      </div>
+
+      <div class="layer-mode-switch" role="tablist" aria-label="CLT層構成の選択">
+        <button type="button" class="mode-btn active" data-layers="5" id="btnMode5">
+          5層構成 <span class="badge-sub">150mm</span>
+        </button>
+        <button type="button" class="mode-btn" data-layers="7" id="btnMode7">
+          7層構成 <span class="badge-sub">210mm</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container main-content">
+    <!-- Top Grid: Parameters & Live Cross-Section Preview -->
+    <div class="top-grid">
+      <!-- Card 1: Calculation Parameters -->
+      <section class="card param-card" aria-labelledby="paramTitle">
+        <div class="card-header">
+          <h2 id="paramTitle">1. 計算前提条件（線形予測・熱抵抗）</h2>
+          <button type="button" class="btn btn-ghost btn-sm" id="btnResetParams" title="初期値に戻す">
+            初期値に戻す
+          </button>
+        </div>
+        <div class="card-body">
+          <div class="param-grid">
+            <div class="param-item">
+              <label for="paramSlope">線形予測 傾き <em>a</em> <span class="unit">[W/(m·K·%)]</span></label>
+              <input type="number" id="paramSlope" step="0.0001" value="-0.0004">
+            </div>
+            <div class="param-item">
+              <label for="paramIntercept">線形予測 切片 <em>b</em> <span class="unit">[W/(m·K)]</span></label>
+              <input type="number" id="paramIntercept" step="0.0001" value="0.0957">
+            </div>
+            <div class="param-item">
+              <label for="paramRi">屋内側 表面熱伝達抵抗 <em>R<sub>i</sub></em> <span class="unit">[㎡·K/W]</span></label>
+              <input type="number" id="paramRi" step="0.0001" value="0.1111">
+            </div>
+            <div class="param-item">
+              <label for="paramRo">屋外側 表面熱伝達抵抗 <em>R<sub>o</sub></em> <span class="unit">[㎡·K/W]</span></label>
+              <input type="number" id="paramRo" step="0.0001" value="0.1111">
+            </div>
+            <div class="param-item">
+              <label for="paramThickness">ラミナ1層厚さ <em>d</em> <span class="unit">[m]</span></label>
+              <input type="number" id="paramThickness" step="0.005" min="0.005" value="0.03">
+            </div>
+            <div class="param-item readonly-box">
+              <span class="ro-label">合計 表面抵抗 <em>R<sub>i</sub> + R<sub>o</sub></em></span>
+              <span class="ro-value" id="displayRTotalSurface">0.2222 <small>㎡·K/W</small></span>
+            </div>
+          </div>
+
+          <div class="axis-legend">
+            <div class="legend-item">
+              <span class="swatch strong"></span>
+              <div>
+                <strong>強軸（奇数層）</strong>
+                <span id="legendStrongText">第1・3・5層（最外層2層＋内層1層）</span>
+              </div>
+            </div>
+            <div class="legend-item">
+              <span class="swatch weak"></span>
+              <div>
+                <strong>弱軸（偶数層）</strong>
+                <span id="legendWeakText">第2・4層（中間2層・ボイド対象）</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Card 2: Interactive Cross-Section & Active Candidate Result -->
+      <section class="card preview-card" aria-labelledby="previewTitle">
+        <div class="card-header">
+          <h2 id="previewTitle">2. 選択候補の断面プレビュー・計算結果</h2>
+          <span class="active-badge" id="activeCandidateBadge">候補 ①</span>
+        </div>
+        <div class="card-body preview-body">
+          <div class="svg-wrapper" id="cltDiagramContainer" aria-label="CLT層構成断面図">
+            <!-- Dynamic SVG rendered by app.js -->
+          </div>
+          <div class="kpi-panel">
+            <div class="kpi-box primary">
+              <span class="kpi-label">U値（理論値）</span>
+              <div class="kpi-value" id="kpiUValue">—</div>
+              <span class="kpi-unit">[W/㎡·K]</span>
+            </div>
+            <div class="kpi-box">
+              <span class="kpi-label">総熱抵抗 <em>R<sub>total</sub></em></span>
+              <div class="kpi-value" id="kpiRValue">—</div>
+              <span class="kpi-unit">[㎡·K/W]</span>
+            </div>
+            <div class="kpi-box">
+              <span class="kpi-label">無垢CLT比（U値低減）</span>
+              <div class="kpi-value" id="kpiReduction">—</div>
+              <span class="kpi-unit" id="kpiBaseRef">基準(全層0%): —</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Card 3: Comparison Table -->
+    <section class="card table-card" aria-labelledby="tableTitle">
+      <div class="card-header table-header-bar">
+        <div>
+          <h2 id="tableTitle">3. 層構成 候補比較シミュレーション（<span id="tableModeLabel">5層構成：総厚 150mm</span>）</h2>
+          <p class="table-hint">水色の入力欄に開口率（0〜100%）を入力すると即座に計算されます。行をクリックすると上の断面図に反映されます。</p>
+        </div>
+        <div class="toolbar-actions">
+          <button type="button" class="btn btn-secondary btn-sm" id="btnLoadPresets">代表パターン読込</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="btnAddRow">＋ 候補追加</button>
+          <button type="button" class="btn btn-primary btn-sm" id="btnExportCsv">CSV出力</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="btnClearAll">クリア</button>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="sim-table" id="simTable">
+          <thead>
+            <tr>
+              <th class="col-no">候補</th>
+              <th class="col-memo">メモ・構成名</th>
+              <th class="col-in">
+                開口率（強軸：最外層）<br>
+                <span class="th-sub" id="thOuterDesc">第1・5層 [%] 入力</span>
+              </th>
+              <th class="col-in">
+                開口率（弱軸）<br>
+                <span class="th-sub" id="thWeakDesc">第2・4層 [%] 入力</span>
+              </th>
+              <th class="col-in">
+                開口率（強軸：内層）<br>
+                <span class="th-sub" id="thInnerDesc">第3層 [%] 入力</span>
+              </th>
+              <th class="col-calc">
+                λ（強軸:最外）<br>
+                <span class="th-sub">[W/m·K]</span>
+              </th>
+              <th class="col-calc">
+                λ（弱軸）<br>
+                <span class="th-sub">[W/m·K]</span>
+              </th>
+              <th class="col-calc">
+                λ（強軸:内層）<br>
+                <span class="th-sub">[W/m·K]</span>
+              </th>
+              <th class="col-result">
+                U値（理論値）<br>
+                <span class="th-sub">[W/㎡·K]</span>
+              </th>
+              <th class="col-diff">
+                無垢比<br>
+                <span class="th-sub">U値低減</span>
+              </th>
+              <th class="col-act">操作</th>
+            </tr>
+          </thead>
+          <tbody id="simTableBody">
+            <!-- Rows populated by app.js -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="formula-footer">
+        <p><strong>計算式：</strong> 各層の熱伝導率 <code>λ = a × 開口率[%] + b</code></p>
+        <p id="uFormulaText"><strong>5層構成 U値：</strong> <code>U = 1 / { (Ri + Ro) + 2d/λ(強軸:最外層) + 2d/λ(弱軸) + 1d/λ(強軸:内層) }</code></p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <div class="container">
+      <p>CLT Thermal Transmittance (U-value) Theoretical Simulator — Works Offline (PWA Ready)</p>
+    </div>
+  </footer>
+
+  <script src="./app.js"></script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+{
+  "name": "CLT層構成別 熱貫流率（U値）理論値シミュレーター",
+  "short_name": "CLT U値計算",
+  "description": "CLTの奇数層（強軸）・偶数層（弱軸）の開口率から熱伝導率λおよび熱貫流率U値の理論値を計算するアプリ",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#18314F",
+  "theme_color": "#18314F",
+  "lang": "ja",
+  "icons": [
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
